@@ -1,24 +1,16 @@
-//
-//  YLSwipeLockView.m
-//  YLSwipeLockViewDemo
-//
-//  Created by 肖 玉龙 on 15/2/12.
-//  Copyright (c) 2015年 Yulong Xiao. All rights reserved.
-//
-
-#import "YLSwipeLockView.h"
-#import "YLSwipeLockNodeView.h"
-@interface YLSwipeLockView()
+#import "LockDroidSwipeLockView.h"
+#import "LockDroidSwipeLockNodeView.h"
+@interface LockDroidSwipeLockView()
 @property (nonatomic, strong) NSMutableArray *nodeArray;
 @property (nonatomic, strong) NSMutableArray *selectedNodeArray;
 @property (nonatomic, strong) CAShapeLayer *polygonalLineLayer;
 @property (nonatomic, strong) UIBezierPath *polygonalLinePath;
 @property (nonatomic, strong) NSMutableArray *pointArray;
 
-@property (nonatomic) YLSwipeLockViewState viewState;
+@property (nonatomic) LockDroidSwipeLockViewState viewState;
 @end
 
-@implementation YLSwipeLockView
+@implementation LockDroidSwipeLockView
 -(id)initWithFrame:(CGRect)frame{
     self = [super initWithFrame:frame];
     if (self) {
@@ -27,7 +19,7 @@
         
         _nodeArray = [NSMutableArray arrayWithCapacity:9];
         for (int i = 0; i < 9; ++i) {
-            YLSwipeLockNodeView *nodeView = [YLSwipeLockNodeView new];
+            LockDroidSwipeLockNodeView *nodeView = [LockDroidSwipeLockNodeView new];
             [_nodeArray addObject:nodeView];
             nodeView.tag = i;
             [self addSubview:nodeView];
@@ -37,7 +29,7 @@
         
         UIPanGestureRecognizer *panRec = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(pan:)];
         [self addGestureRecognizer:panRec];
-        self.viewState = YLSwipeLockNodeViewStatusNormal;
+        self.viewState = LockDroidSwipeLockNodeViewStatusNormal;
         [self cleanNodes];
         
     }
@@ -46,14 +38,15 @@
 
 -(void)pan:(UIPanGestureRecognizer *)rec
 {
+	@autoreleasepool {
     if  (rec.state == UIGestureRecognizerStateBegan){
-        self.viewState = YLSwipeLockNodeViewStatusNormal;
+        self.viewState = LockDroidSwipeLockNodeViewStatusNormal;
     }
     
     CGPoint touchPoint = [rec locationInView:self];
     NSInteger index = [self indexForNodeAtPoint:touchPoint];
     if (index >= 0) {
-        YLSwipeLockNodeView *node = self.nodeArray[index];
+        LockDroidSwipeLockNodeView *node = self.nodeArray[index];
         
         if (![self addSelectedNode:node]) {
             [self moveLineWithFingerPosition:touchPoint];
@@ -69,7 +62,7 @@
         [self removeLastFingerPosition];
         if([self.delegate respondsToSelector:@selector(swipeView:didEndSwipeWithPassword:)]){
             NSMutableString *password = [NSMutableString new];
-            for(YLSwipeLockNodeView *nodeView in self.selectedNodeArray){
+            for(LockDroidSwipeLockNodeView *nodeView in self.selectedNodeArray){
                 NSString *index = [@(nodeView.tag) stringValue];
                 [password appendString:index];
             }
@@ -77,23 +70,24 @@
             
         }
         else{
-            self.viewState = YLSwipeLockViewStateSelected;
+            self.viewState = LockDroidSwipeLockViewStateSelected;
         }
     }
-    
+    }
 }
 
--(BOOL)addSelectedNode:(YLSwipeLockNodeView *)nodeView
+-(BOOL)addSelectedNode:(LockDroidSwipeLockNodeView *)nodeView
 {
+	@autoreleasepool {
     if (![self.selectedNodeArray containsObject:nodeView]) {
-        nodeView.nodeViewStatus = YLSwipeLockNodeViewStatusSelected;
+        nodeView.nodeViewStatus = LockDroidSwipeLockNodeViewStatusSelected;
         [self.selectedNodeArray addObject:nodeView];
         
         [self addLineToNode:nodeView];
 		
 		if([self.delegate respondsToSelector:@selector(swipeView:didChangeSwipeWithPassword:)]){
 		    NSMutableString *password = [NSMutableString new];
-            for(YLSwipeLockNodeView *nodeView in self.selectedNodeArray){
+            for(LockDroidSwipeLockNodeView *nodeView in self.selectedNodeArray){
                 NSString *index = [@(nodeView.tag) stringValue];
                 [password appendString:index];
             }
@@ -104,11 +98,12 @@
     }else{
         return NO;
     }
-    
+    }
 }
 
--(void)addLineToNode:(YLSwipeLockNodeView *)nodeView
+-(void)addLineToNode:(LockDroidSwipeLockNodeView *)nodeView
 {
+	@autoreleasepool {
     if(self.selectedNodeArray.count == 1){
         
         //path move to start point
@@ -135,11 +130,12 @@
         self.polygonalLineLayer.path = self.polygonalLinePath.CGPath;
         
     }
-
+	}
 }
 
 -(void)moveLineWithFingerPosition:(CGPoint)touchPoint
 {
+	@autoreleasepool {
     if (self.pointArray.count > 0) {
         if (self.pointArray.count > self.selectedNodeArray.count) {
             [self.pointArray removeLastObject];
@@ -154,12 +150,13 @@
             [self.polygonalLinePath addLineToPoint:middlePoint];
         }
         self.polygonalLineLayer.path = self.polygonalLinePath.CGPath;
-        
     }
+	}
 }
 
 -(void)removeLastFingerPosition
 {
+	@autoreleasepool {
     if (self.pointArray.count > 0) {
         if (self.pointArray.count > self.selectedNodeArray.count) {
             [self.pointArray removeLastObject];
@@ -175,10 +172,11 @@
         self.polygonalLineLayer.path = self.polygonalLinePath.CGPath;
         
     }
+	}
 }
 
 -(void)layoutSubviews{
-    
+    @autoreleasepool {
     self.polygonalLineLayer.frame = self.bounds;
     CAShapeLayer *maskLayer = [CAShapeLayer new];
     maskLayer.frame = self.bounds;
@@ -190,7 +188,7 @@
     maskLayer.fillColor = [UIColor blackColor].CGColor;
     //TODO: here should be more decent
     for (int i = 0; i < self.nodeArray.count; ++i) {
-        YLSwipeLockNodeView *nodeView = _nodeArray[i];
+        LockDroidSwipeLockNodeView *nodeView = _nodeArray[i];
         // TODO: change to use MIN marco in the future
         CGFloat min = self.bounds.size.width < self.bounds.size.height ? self.bounds.size.width : self.bounds.size.height;
         CGFloat width = min / 4.5f;
@@ -204,12 +202,14 @@
     
     maskLayer.path = maskPath.CGPath;
     self.polygonalLineLayer.mask = maskLayer;
+	}
 }
 
 -(NSInteger)indexForNodeAtPoint:(CGPoint)point
 {
+	@autoreleasepool {
     for (int i = 0; i < self.nodeArray.count; ++i) {
-        YLSwipeLockNodeView *node = self.nodeArray[i];
+        LockDroidSwipeLockNodeView *node = self.nodeArray[i];
         CGPoint pointInNode = [node convertPoint:point fromView:self];
         if ([node pointInside:pointInNode withEvent:nil]) {
             NSLog(@"点中了第%d个~~", i);
@@ -217,13 +217,15 @@
         }
     }
     return -1;
+	}
 }
 
 -(void)cleanNodes
 {
+	@autoreleasepool {
     for (int i = 0; i < self.nodeArray.count; ++i) {
-        YLSwipeLockNodeView *node = self.nodeArray[i];
-        node.nodeViewStatus = YLSwipeLockNodeViewStatusNormal;
+        LockDroidSwipeLockNodeView *node = self.nodeArray[i];
+        node.nodeViewStatus = LockDroidSwipeLockNodeViewStatusNormal;
     }
     
     [self.selectedNodeArray removeAllObjects];
@@ -231,25 +233,40 @@
     self.polygonalLinePath = [UIBezierPath new];
     self.polygonalLineLayer.strokeColor = LIGHTBLUE.CGColor;
     self.polygonalLineLayer.path = self.polygonalLinePath.CGPath;
+	}
 }
 
 -(void)cleanNodesIfNeeded{
-    if(self.viewState != YLSwipeLockNodeViewStatusNormal){
+    if(self.viewState != LockDroidSwipeLockNodeViewStatusNormal){
         [self cleanNodes];
     }
 }
 
 -(void)makeNodesToWarning
 {
+	@autoreleasepool {
     for (int i = 0; i < self.selectedNodeArray.count; ++i) {
-        YLSwipeLockNodeView *node = self.selectedNodeArray[i];
-        node.nodeViewStatus = YLSwipeLockNodeViewStatusWarning;
+        LockDroidSwipeLockNodeView *node = self.selectedNodeArray[i];
+        node.nodeViewStatus = LockDroidSwipeLockNodeViewStatusWarning;
     }
     self.polygonalLineLayer.strokeColor = [UIColor redColor].CGColor;
+	}
+}
+
+-(void)makeNodesToValid
+{
+	@autoreleasepool {
+    for (int i = 0; i < self.selectedNodeArray.count; ++i) {
+        LockDroidSwipeLockNodeView *node = self.selectedNodeArray[i];
+        node.nodeViewStatus = LockDroidSwipeLockNodeViewStatusValid;
+    }
+    self.polygonalLineLayer.strokeColor = [UIColor greenColor].CGColor;
+	}
 }
 
 -(CAShapeLayer *)polygonalLineLayer
 {
+	@autoreleasepool {
     if (_polygonalLineLayer == nil) {
         _polygonalLineLayer = [[CAShapeLayer alloc] init];
         _polygonalLineLayer.lineWidth = 5.0f;
@@ -257,25 +274,28 @@
         _polygonalLineLayer.fillColor = [UIColor clearColor].CGColor;
     }
     return _polygonalLineLayer;
+	}
 }
 
--(void)setViewState:(YLSwipeLockViewState)viewState
+-(void)setViewState:(LockDroidSwipeLockViewState)viewState
 {
+	@autoreleasepool {
 //    if(_viewState != viewState){
         _viewState = viewState;
         switch (_viewState){
-            case YLSwipeLockViewStateNormal:
+            case LockDroidSwipeLockViewStateNormal:
                 [self cleanNodes];
                 break;
-            case YLSwipeLockViewStateWarning:
+            case LockDroidSwipeLockViewStateWarning:
                 [self makeNodesToWarning];
                 [self performSelector:@selector(cleanNodesIfNeeded) withObject:nil afterDelay:1];
                 break;
-            case YLSwipeLockViewStateSelected:
+            case LockDroidSwipeLockViewStateSelected:
             default:
                 break;
         }
 //    }
+	}
 }
 
 /*

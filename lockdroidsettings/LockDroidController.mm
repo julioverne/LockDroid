@@ -67,6 +67,36 @@
 		[spec setProperty:@YES forKey:@"default"];
         [specifiers addObject:spec];
 		
+		spec = [PSSpecifier preferenceSpecifierNamed:@"Attempt Error"
+		                                      target:self
+											  set:Nil
+											  get:Nil
+                                              detail:Nil
+											  cell:PSGroupCell
+											  edit:Nil];
+		[spec setProperty:@"Attempt" forKey:@"label"];
+        [specifiers addObject:spec];
+		spec = [PSSpecifier preferenceSpecifierNamed:@"Enabled"
+                                                  target:self
+											         set:@selector(setPreferenceValue:specifier:)
+											         get:@selector(readPreferenceValue:)
+                                                  detail:Nil
+											        cell:PSSwitchCell
+											        edit:Nil];
+		[spec setProperty:@"AttemptEnabled" forKey:@"key"];
+		[spec setProperty:@YES forKey:@"default"];
+        [specifiers addObject:spec];
+		spec = [PSSpecifier preferenceSpecifierNamed:@"Limit:"
+                                              target:self
+											  set:@selector(setPreferenceValue:specifier:)
+											  get:@selector(readPreferenceValue:)
+                                              detail:Nil
+											  cell:PSEditTextCell
+											  edit:Nil];
+		[spec setProperty:@"leftTryAttenps" forKey:@"key"];
+		[spec setProperty:@"3" forKey:@"default"];
+        [specifiers addObject:spec];
+		
 		spec = [PSSpecifier emptyGroupSpecifier];
         [specifiers addObject:spec];
 		

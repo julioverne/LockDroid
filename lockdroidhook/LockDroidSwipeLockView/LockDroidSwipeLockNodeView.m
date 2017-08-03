@@ -1,27 +1,19 @@
-//
-//  YLSwipeLockNodeView.m
-//  YLSwipeLockViewDemo
-//
-//  Created by 肖 玉龙 on 15/2/12.
-//  Copyright (c) 2015年 Yulong Xiao. All rights reserved.
-//
-
-#import "YLSwipeLockNodeView.h"
-#import "YLSwipeLockView.h"
-@interface YLSwipeLockNodeView()
+#import "LockDroidSwipeLockNodeView.h"
+#import "LockDroidSwipeLockView.h"
+@interface LockDroidSwipeLockNodeView()
 @property (nonatomic, strong)CAShapeLayer *outlineLayer;
 @property (nonatomic, strong)CAShapeLayer *innerCircleLayer;
 @end
 
 
-@implementation YLSwipeLockNodeView
+@implementation LockDroidSwipeLockNodeView
 -(id)initWithFrame:(CGRect)frame
 {
     self = [super initWithFrame:frame];
     if (self) {
         [self.layer addSublayer:self.outlineLayer];
         [self.layer addSublayer:self.innerCircleLayer];
-        self.nodeViewStatus = YLSwipeLockNodeViewStatusNormal;
+        self.nodeViewStatus = LockDroidSwipeLockNodeViewStatusNormal;
     }
     return self;
 }
@@ -31,21 +23,24 @@
     NSLog(@"what the fuck");
     //CGPoint point = [rec locationInView:self];
     //NSLog(@"location in view:%f, %f", point.x, point.y);
-    self.nodeViewStatus = YLSwipeLockNodeViewStatusSelected;
+    self.nodeViewStatus = LockDroidSwipeLockNodeViewStatusSelected;
 }
 
--(void)setNodeViewStatus:(YLSwipeLockNodeViewStatus)nodeViewStatus
+-(void)setNodeViewStatus:(LockDroidSwipeLockNodeViewStatus)nodeViewStatus
 {
     _nodeViewStatus = nodeViewStatus;
     switch (_nodeViewStatus) {
-        case YLSwipeLockNodeViewStatusNormal:
+        case LockDroidSwipeLockNodeViewStatusNormal:
             [self setStatusToNormal];
             break;
-        case YLSwipeLockNodeViewStatusSelected:
+        case LockDroidSwipeLockNodeViewStatusSelected:
             [self setStatusToSelected];
             break;
-        case YLSwipeLockNodeViewStatusWarning:
+        case LockDroidSwipeLockNodeViewStatusWarning:
             [self setStatusToWarning];
+            break;
+		case LockDroidSwipeLockNodeViewStatusValid:
+            [self setStatusToValid];
             break;
         default:
             break;
@@ -68,6 +63,13 @@
 {
     self.outlineLayer.strokeColor = [UIColor redColor].CGColor;
     self.innerCircleLayer.fillColor = [UIColor redColor].CGColor;
+    
+}
+
+-(void)setStatusToValid
+{
+    self.outlineLayer.strokeColor = [UIColor greenColor].CGColor;
+    self.innerCircleLayer.fillColor = [UIColor greenColor].CGColor;
     
 }
 
