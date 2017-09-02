@@ -1,5 +1,6 @@
 #import "LockDroidSwipeLockView.h"
 #import "LockDroidSwipeLockNodeView.h"
+
 @interface LockDroidSwipeLockView()
 @property (nonatomic, strong) NSMutableArray *nodeArray;
 @property (nonatomic, strong) NSMutableArray *selectedNodeArray;
@@ -17,15 +18,17 @@
         
         [self.layer addSublayer:self.polygonalLineLayer];
         
-        _nodeArray = [NSMutableArray arrayWithCapacity:9];
-        for (int i = 0; i < 9; ++i) {
+        _nodeArray = [NSMutableArray arrayWithCapacity:(matrix*matrix)];
+        for (int i = 0; i < (matrix*matrix); ++i) {
             LockDroidSwipeLockNodeView *nodeView = [LockDroidSwipeLockNodeView new];
             [_nodeArray addObject:nodeView];
             nodeView.tag = i;
             [self addSubview:nodeView];
         }
-        _selectedNodeArray = [NSMutableArray arrayWithCapacity:9];
+        _selectedNodeArray = [NSMutableArray arrayWithCapacity:(matrix*matrix)];
         _pointArray = [NSMutableArray array];
+		
+		
         
         UIPanGestureRecognizer *panRec = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(pan:)];
         [self addGestureRecognizer:panRec];
@@ -187,16 +190,36 @@
     maskLayer.strokeColor = [UIColor blackColor].CGColor;
     maskLayer.fillColor = [UIColor blackColor].CGColor;
     //TODO: here should be more decent
+	
+	CGFloat min = self.bounds.size.width < self.bounds.size.height ? self.bounds.size.width : self.bounds.size.height;
+	float param1;
+	float param2;
+	float param3;
+	
+	if(matrix == 3) {
+		param1 = 4.5f;
+		param2 = 4;
+		param3 = 1.5f;
+	} else if(matrix == 4) {
+		param1 = 5.5f;
+		param2 = 5;
+		param3 = 1.35f;
+	} else if(matrix == 5) {
+		param1 = 6.5f;
+		param2 = 6;
+		param3 = 1.30f;
+	}
+	
     for (int i = 0; i < self.nodeArray.count; ++i) {
         LockDroidSwipeLockNodeView *nodeView = _nodeArray[i];
-        // TODO: change to use MIN marco in the future
-        CGFloat min = self.bounds.size.width < self.bounds.size.height ? self.bounds.size.width : self.bounds.size.height;
-        CGFloat width = min / 4.5f;
-        CGFloat height = min / 4.5f;
-        int row = i % 3;
-        int column = i / 3;
-        CGRect frame = CGRectMake((width/4)+(row *(width * 1.5f)), (width/4)+(column * (width * 1.5f)), width, height);
+		int row = i % matrix;
+        int column = i / matrix;
+		
+        CGFloat width = min / param1;
+        CGFloat height = min / param1;
+		CGRect frame = CGRectMake((width/param2)+(row *(width * param3)), (width/param2)+(column * (width * param3)), width, height);
         nodeView.frame = frame;
+		
         [maskPath appendPath:[UIBezierPath bezierPathWithOvalInRect:frame]];
     }
     
@@ -231,7 +254,7 @@
     [self.selectedNodeArray removeAllObjects];
     [self.pointArray removeAllObjects];
     self.polygonalLinePath = [UIBezierPath new];
-    self.polygonalLineLayer.strokeColor = LIGHTBLUE.CGColor;
+    self.polygonalLineLayer.strokeColor = selectionColor.CGColor;
     self.polygonalLineLayer.path = self.polygonalLinePath.CGPath;
 	}
 }
@@ -249,7 +272,7 @@
         LockDroidSwipeLockNodeView *node = self.selectedNodeArray[i];
         node.nodeViewStatus = LockDroidSwipeLockNodeViewStatusWarning;
     }
-    self.polygonalLineLayer.strokeColor = [UIColor redColor].CGColor;
+    self.polygonalLineLayer.strokeColor = warningColor.CGColor;
 	}
 }
 
@@ -260,7 +283,7 @@
         LockDroidSwipeLockNodeView *node = self.selectedNodeArray[i];
         node.nodeViewStatus = LockDroidSwipeLockNodeViewStatusValid;
     }
-    self.polygonalLineLayer.strokeColor = [UIColor greenColor].CGColor;
+    self.polygonalLineLayer.strokeColor = validColor.CGColor;
 	}
 }
 
@@ -270,7 +293,7 @@
     if (_polygonalLineLayer == nil) {
         _polygonalLineLayer = [[CAShapeLayer alloc] init];
         _polygonalLineLayer.lineWidth = 5.0f;
-        _polygonalLineLayer.strokeColor = LIGHTBLUE.CGColor;
+        _polygonalLineLayer.strokeColor = selectionColor.CGColor;
         _polygonalLineLayer.fillColor = [UIColor clearColor].CGColor;
     }
     return _polygonalLineLayer;

@@ -1,5 +1,13 @@
 #import <UIKit/UIKit.h>
-#define LIGHTBLUE [UIColor colorWithRed:0 green:170/255.0 blue:1 alpha:1]
+
+extern UIColor* selectionColor;
+extern UIColor* warningColor;
+extern UIColor* validColor;
+extern UIColor* dotNormalColor;
+extern UIColor* dotFillColor;
+extern BOOL useImage;
+extern NSString* imagePath;
+extern int matrix;
 
 typedef NS_ENUM(NSUInteger, LockDroidSwipeLockViewState) {
     LockDroidSwipeLockViewStateNormal,

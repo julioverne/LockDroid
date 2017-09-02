@@ -1,31 +1,42 @@
 #import "LockDroidSwipeLockNodeView.h"
 #import "LockDroidSwipeLockView.h"
+
 @interface LockDroidSwipeLockNodeView()
 @property (nonatomic, strong)CAShapeLayer *outlineLayer;
 @property (nonatomic, strong)CAShapeLayer *innerCircleLayer;
+@property (nonatomic, strong)UIImageView* image;
 @end
-
 
 @implementation LockDroidSwipeLockNodeView
 -(id)initWithFrame:(CGRect)frame
 {
     self = [super initWithFrame:frame];
     if (self) {
-        [self.layer addSublayer:self.outlineLayer];
-        [self.layer addSublayer:self.innerCircleLayer];
+		if(useImage) {
+			self.image = [[UIImageView alloc] init];
+			[self addSubview:self.image];
+		} else {
+			[self.layer addSublayer:self.outlineLayer];
+			[self.layer addSublayer:self.innerCircleLayer];
+		}
         self.nodeViewStatus = LockDroidSwipeLockNodeViewStatusNormal;
     }
     return self;
 }
-
+- (void)setTag:(NSInteger)arg1
+{
+	[super setTag:arg1];
+	NSData* imageData = [NSData dataWithContentsOfFile:[imagePath stringByAppendingPathComponent:[NSString stringWithFormat:@"%d.png", (int)arg1]]];
+	if(!imageData) {
+		imageData = [NSData dataWithContentsOfFile:[imagePath stringByAppendingPathComponent:[NSString stringWithFormat:@"%d.png", 0]]];
+	}
+	UIImage *image = [[UIImage alloc] initWithData:imageData];
+	[self.image setImage:image];
+}
 -(void)pan:(UIPanGestureRecognizer *)rec
 {
-    NSLog(@"what the fuck");
-    //CGPoint point = [rec locationInView:self];
-    //NSLog(@"location in view:%f, %f", point.x, point.y);
     self.nodeViewStatus = LockDroidSwipeLockNodeViewStatusSelected;
 }
-
 -(void)setNodeViewStatus:(LockDroidSwipeLockNodeViewStatus)nodeViewStatus
 {
     _nodeViewStatus = nodeViewStatus;
@@ -46,36 +57,29 @@
             break;
     }
 }
-
 -(void)setStatusToNormal
 {
-    self.outlineLayer.strokeColor = [UIColor whiteColor].CGColor;
-    self.innerCircleLayer.fillColor = [UIColor whiteColor].CGColor;
+    self.outlineLayer.strokeColor = dotNormalColor.CGColor;
+    self.innerCircleLayer.fillColor = dotNormalColor.CGColor;
 }
-
 -(void)setStatusToSelected
 {
-    self.outlineLayer.strokeColor = LIGHTBLUE.CGColor;
-    self.innerCircleLayer.fillColor = LIGHTBLUE.CGColor;
+    self.outlineLayer.strokeColor = selectionColor.CGColor;
+    self.innerCircleLayer.fillColor = selectionColor.CGColor;
 }
-
 -(void)setStatusToWarning
 {
-    self.outlineLayer.strokeColor = [UIColor redColor].CGColor;
-    self.innerCircleLayer.fillColor = [UIColor redColor].CGColor;
-    
+    self.outlineLayer.strokeColor = warningColor.CGColor;
+    self.innerCircleLayer.fillColor = warningColor.CGColor;
 }
-
 -(void)setStatusToValid
 {
-    self.outlineLayer.strokeColor = [UIColor greenColor].CGColor;
-    self.innerCircleLayer.fillColor = [UIColor greenColor].CGColor;
-    
+    self.outlineLayer.strokeColor = validColor.CGColor;
+    self.innerCircleLayer.fillColor = validColor.CGColor;
 }
-
-
 -(void)layoutSubviews
 {
+	self.image.frame = self.bounds;
     self.outlineLayer.frame = self.bounds;
     UIBezierPath *outlinePath = [UIBezierPath bezierPathWithOvalInRect:self.bounds];
     self.outlineLayer.path = outlinePath.CGPath;
@@ -87,35 +91,24 @@
     self.innerCircleLayer.path = innerPath.CGPath;
 
 }
-
 -(CAShapeLayer *)outlineLayer
 {
     if (_outlineLayer == nil) {
         _outlineLayer = [[CAShapeLayer alloc] init];
-        _outlineLayer.strokeColor = LIGHTBLUE.CGColor;
+        _outlineLayer.strokeColor = selectionColor.CGColor;
         _outlineLayer.lineWidth = 1.0f;
-        _outlineLayer.fillColor  = [UIColor clearColor].CGColor;
+        _outlineLayer.fillColor  = dotFillColor.CGColor;
     }
     return _outlineLayer;
 }
-
 -(CAShapeLayer *)innerCircleLayer
 {
     if (_innerCircleLayer == nil) {
         _innerCircleLayer = [[CAShapeLayer alloc] init];
         _innerCircleLayer.strokeColor = [UIColor clearColor].CGColor;
         _innerCircleLayer.lineWidth = 1.0f;
-        _innerCircleLayer.fillColor  = LIGHTBLUE.CGColor;
+        _innerCircleLayer.fillColor  = selectionColor.CGColor;
     }
     return _innerCircleLayer;
 }
-
-/*
-// Only override drawRect: if you perform custom drawing.
-// An empty implementation adversely affects performance during animation.
-- (void)drawRect:(CGRect)rect {
-    // Drawing code
-}
-*/
-
 @end

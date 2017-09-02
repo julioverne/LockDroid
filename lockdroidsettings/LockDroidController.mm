@@ -40,10 +40,20 @@
 		[spec setProperty:@YES forKey:@"default"];
         [specifiers addObject:spec];
 		
+		
+		
+		BOOL needDrawPass;
+		@autoreleasepool {
+			NSDictionary *CydiaEnablePrefsCheck = [[NSDictionary alloc] initWithContentsOfFile:@PLIST_PATH_Settings]?:[NSDictionary dictionary];
+			needDrawPass = CydiaEnablePrefsCheck[@"PasswordDraw"]?NO:YES;
+		}
 		spec = [PSSpecifier emptyGroupSpecifier];
+		if(needDrawPass) {
+			[spec setProperty:@"⚠ Requires Draw Pattern. ⚠" forKey:@"footerText"];
+		}
         [specifiers addObject:spec];
 		
-		spec = [PSSpecifier preferenceSpecifierNamed:@"Draw New Password"
+		spec = [PSSpecifier preferenceSpecifierNamed:[needDrawPass?@"⚠ ":@"" stringByAppendingString:@"Draw New Password"]
                                               target:self
                                                  set:NULL
                                                  get:NULL
@@ -52,6 +62,29 @@
                                                 edit:Nil];
         spec->action = @selector(openDraw);
         [specifiers addObject:spec];
+		
+		
+		
+		spec = [PSSpecifier preferenceSpecifierNamed:@"Matrix Size"
+		                                      target:self
+											  set:Nil
+											  get:Nil
+                                              detail:Nil
+											  cell:PSGroupCell
+											  edit:Nil];
+		[spec setProperty:@"Matrix Size" forKey:@"label"];
+        [specifiers addObject:spec];
+		spec = [PSSpecifier preferenceSpecifierNamed:@"Matrix Size"
+											  target:self
+												 set:@selector(setPreferenceValue:specifier:)
+												 get:@selector(readPreferenceValue:)
+											  detail:Nil
+												cell:PSSegmentCell
+												edit:Nil];
+		[spec setValues:@[@(3), @(4), @(5),] titles:@[@"3x3", @"4x4", @"5x5",]];
+		[spec setProperty:@(3) forKey:@"default"];
+		[spec setProperty:@"matrix" forKey:@"key"];
+		[specifiers addObject:spec];
 		
 		spec = [PSSpecifier emptyGroupSpecifier];
         [specifiers addObject:spec];
@@ -97,8 +130,189 @@
 		[spec setProperty:@"3" forKey:@"default"];
         [specifiers addObject:spec];
 		
+	spec = [PSSpecifier preferenceSpecifierNamed:@"Theme"
+		                                      target:self
+											  set:Nil
+											  get:Nil
+                                              detail:Nil
+											  cell:PSGroupCell
+											  edit:Nil];
+		[spec setProperty:@"Theme" forKey:@"label"];
+    [specifiers addObject:spec];
+	spec = [PSSpecifier preferenceSpecifierNamed:@"Enabled"
+                                                  target:self
+											         set:@selector(setPreferenceValue:specifier:)
+											         get:@selector(readPreferenceValue:)
+                                                  detail:Nil
+											        cell:PSSwitchCell
+											        edit:Nil];
+		[spec setProperty:@"useImage" forKey:@"key"];
+		[spec setProperty:@NO forKey:@"default"];
+        [specifiers addObject:spec];
+	NSArray* themes = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:@"/Library/Application Support/LockDroid" error:nil]?:@[];
+	spec = [PSSpecifier preferenceSpecifierNamed:@"Select Theme"
+					      target:self
+											  set:@selector(setPreferenceValue:specifier:)
+											  get:@selector(readPreferenceValue:)
+					      detail:PSListItemsController.class
+											  cell:PSLinkListCell
+											  edit:Nil];
+		[spec setProperty:@"imagePath" forKey:@"key"];
+		[spec setProperty:@"Default.theme" forKey:@"default"];
+		[spec setValues:themes titles:themes];
+	[specifiers addObject:spec];
+		
+		
+		spec = [PSSpecifier preferenceSpecifierNamed:@"Color"
+		                                      target:self
+											  set:Nil
+											  get:Nil
+                                              detail:Nil
+											  cell:PSGroupCell
+											  edit:Nil];
+		[spec setProperty:@"Color" forKey:@"label"];
+        [specifiers addObject:spec];
+		spec = [PSSpecifier preferenceSpecifierNamed:@"Selection"
+                                              target:self
+                                                 set:NULL
+                                                 get:NULL
+                                              detail:Nil
+                                                cell:PSLinkCell
+                                                edit:Nil];
+		[spec setProperty:NSClassFromString(@"PFSimpleLiteColorCell") forKey:@"cellClass"];
+		[spec setProperty:@"Selection" forKey:@"label"];
+		[spec setProperty:@YES forKey:@"isContoller"];
+		[spec setProperty:@{@"defaults": @"com.julioverne.lockdroid",
+				@"key": @"selectionColor",
+				@"fallback": @"#00adff",
+				@"PostNotification": @"com.julioverne.lockdroid/Settings",
+				@"alpha": @YES,} forKey:@"libcolorpicker"];
+		spec->action = @selector(cellAction);
+        [specifiers addObject:spec];
+		spec = [PSSpecifier preferenceSpecifierNamed:@"Warning"
+                                              target:self
+                                                 set:NULL
+                                                 get:NULL
+                                              detail:Nil
+                                                cell:PSLinkCell
+                                                edit:Nil];
+		[spec setProperty:NSClassFromString(@"PFSimpleLiteColorCell") forKey:@"cellClass"];
+		[spec setProperty:@"Warning" forKey:@"label"];
+		[spec setProperty:@YES forKey:@"isContoller"];
+		[spec setProperty:@{@"defaults": @"com.julioverne.lockdroid",
+				@"key": @"warningColor",
+				@"fallback": @"#ff0000",
+				@"PostNotification": @"com.julioverne.lockdroid/Settings",
+				@"alpha": @YES,} forKey:@"libcolorpicker"];
+		spec->action = @selector(cellAction);
+        [specifiers addObject:spec];
+		spec = [PSSpecifier preferenceSpecifierNamed:@"Valid"
+                                              target:self
+                                                 set:NULL
+                                                 get:NULL
+                                              detail:Nil
+                                                cell:PSLinkCell
+                                                edit:Nil];
+		[spec setProperty:NSClassFromString(@"PFSimpleLiteColorCell") forKey:@"cellClass"];
+		[spec setProperty:@"Valid" forKey:@"label"];
+		[spec setProperty:@YES forKey:@"isContoller"];
+		[spec setProperty:@{@"defaults": @"com.julioverne.lockdroid",
+				@"key": @"validColor",
+				@"fallback": @"#00ff00",
+				@"PostNotification": @"com.julioverne.lockdroid/Settings",
+				@"alpha": @YES,} forKey:@"libcolorpicker"];
+		spec->action = @selector(cellAction);
+        [specifiers addObject:spec];
+		spec = [PSSpecifier preferenceSpecifierNamed:@"Dot Normal"
+                                              target:self
+                                                 set:NULL
+                                                 get:NULL
+                                              detail:Nil
+                                                cell:PSLinkCell
+                                                edit:Nil];
+		[spec setProperty:NSClassFromString(@"PFSimpleLiteColorCell") forKey:@"cellClass"];
+		[spec setProperty:@"Dot Normal" forKey:@"label"];
+		[spec setProperty:@YES forKey:@"isContoller"];
+		[spec setProperty:@{@"defaults": @"com.julioverne.lockdroid",
+				@"key": @"dotNormalColor",
+				@"fallback": @"#ffffff",
+				@"PostNotification": @"com.julioverne.lockdroid/Settings",
+				@"alpha": @YES,} forKey:@"libcolorpicker"];
+		spec->action = @selector(cellAction);
+        [specifiers addObject:spec];
+		spec = [PSSpecifier preferenceSpecifierNamed:@"Dot Fill"
+                                              target:self
+                                                 set:NULL
+                                                 get:NULL
+                                              detail:Nil
+                                                cell:PSLinkCell
+                                                edit:Nil];
+		[spec setProperty:NSClassFromString(@"PFSimpleLiteColorCell") forKey:@"cellClass"];
+		[spec setProperty:@"Dot Fill" forKey:@"label"];
+		[spec setProperty:@YES forKey:@"isContoller"];
+		[spec setProperty:@{@"defaults": @"com.julioverne.lockdroid",
+				@"key": @"dotFillColor",
+				@"fallback": @"#000000:0.200000",
+				@"PostNotification": @"com.julioverne.lockdroid/Settings",
+				@"alpha": @YES,} forKey:@"libcolorpicker"];
+		spec->action = @selector(cellAction);
+        [specifiers addObject:spec];
+		
+		
+		spec = [PSSpecifier preferenceSpecifierNamed:@"Localization's"
+		                                      target:self
+											  set:Nil
+											  get:Nil
+                                              detail:Nil
+											  cell:PSGroupCell
+											  edit:Nil];
+		[spec setProperty:@"Localization's" forKey:@"label"];
+        [specifiers addObject:spec];
+	
+	spec = [PSSpecifier preferenceSpecifierNamed:nil
+					      target:self
+											  set:@selector(setPreferenceValue:specifier:)
+											  get:@selector(readPreferenceValue:)
+					      detail:Nil
+											  cell:PSEditTextCell
+											  edit:Nil];
+		[spec setProperty:@"drawYourPassword" forKey:@"key"];
+		[spec setProperty:@"Draw Your Password" forKey:@"default"];
+	[specifiers addObject:spec];
+	spec = [PSSpecifier preferenceSpecifierNamed:nil
+					      target:self
+											  set:@selector(setPreferenceValue:specifier:)
+											  get:@selector(readPreferenceValue:)
+					      detail:Nil
+											  cell:PSEditTextCell
+											  edit:Nil];
+		[spec setProperty:@"incorrectDrawPassword" forKey:@"key"];
+		[spec setProperty:@"Incorrect Draw Password" forKey:@"default"];
+	[specifiers addObject:spec];
+	spec = [PSSpecifier preferenceSpecifierNamed:nil
+					      target:self
+											  set:@selector(setPreferenceValue:specifier:)
+											  get:@selector(readPreferenceValue:)
+					      detail:Nil
+											  cell:PSEditTextCell
+											  edit:Nil];
+		[spec setProperty:@"inputPassword" forKey:@"key"];
+		[spec setProperty:@"Input Password." forKey:@"default"];
+	[specifiers addObject:spec];
+	spec = [PSSpecifier preferenceSpecifierNamed:nil
+					      target:self
+											  set:@selector(setPreferenceValue:specifier:)
+											  get:@selector(readPreferenceValue:)
+					      detail:Nil
+											  cell:PSEditTextCell
+											  edit:Nil];
+		[spec setProperty:@"attemptLeft" forKey:@"key"];
+		[spec setProperty:@"Attempt Left." forKey:@"default"];
+	[specifiers addObject:spec];
+		
 		spec = [PSSpecifier emptyGroupSpecifier];
         [specifiers addObject:spec];
+		
 		
 		spec = [PSSpecifier preferenceSpecifierNamed:@"Reset Settings"
                                               target:self
@@ -140,6 +354,13 @@
 	return _specifiers;
 }
 
+- (void)viewWillAppear:(BOOL)anin
+{
+	[super viewWillAppear:anin];
+	[self.view endEditing:YES];
+	[self reloadSpecifiers];
+}
+
 - (void)openDraw
 {
 	dlopen("/Library/MobileSubstrate/DynamicLibraries/lockdroid.dylib", RTLD_LAZY);
@@ -165,19 +386,33 @@
 		[[self navigationController] presentViewController:twitter animated:YES completion:nil];
 	}
 }
+- (void)showPrompt
+{
+	UIAlertView *alert = [[UIAlertView alloc] initWithTitle:self.title message:@"An Respring is Requerid for this option." delegate:self cancelButtonTitle:@"Cancel" otherButtonTitles:@"Respring", nil];
+	alert.tag = 55;
+	[alert show];
+}
 - (void)reset
 {
 	[@{} writeToFile:@PLIST_PATH_Settings atomically:YES];	
 	[self reloadSpecifiers];
 	notify_post("com.julioverne.lockdroid/Settings");
+	[self showPrompt];
 }
 - (void)setPreferenceValue:(id)value specifier:(PSSpecifier *)specifier
 {
 	@autoreleasepool {
 		NSMutableDictionary *CydiaEnablePrefsCheck = [[NSMutableDictionary alloc] initWithContentsOfFile:@PLIST_PATH_Settings]?:[NSMutableDictionary dictionary];
 		[CydiaEnablePrefsCheck setObject:value forKey:[specifier identifier]];
+		if([[specifier identifier] isEqualToString:@"matrix"]) {
+			[CydiaEnablePrefsCheck removeObjectForKey:@"PasswordDraw"];
+		}
 		[CydiaEnablePrefsCheck writeToFile:@PLIST_PATH_Settings atomically:YES];
 		notify_post("com.julioverne.lockdroid/Settings");
+		if ([[specifier properties] objectForKey:@"PromptRespring"]) {
+			[self showPrompt];
+		}
+		[self performSelector:@selector(reloadSpecifiers) withObject:nil afterDelay:1];
 	}
 }
 - (id)readPreferenceValue:(PSSpecifier*)specifier
@@ -244,6 +479,12 @@
 	[heart addTarget:self action:@selector(love) forControlEvents:UIControlEventTouchUpInside];
 	self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:heart];
 }
+- (void)alertView:(UIAlertView *)alertView didDismissWithButtonIndex:(NSInteger)buttonIndex
+{
+    if (alertView.tag == 55 && buttonIndex == 1) {
+        system("killall backboardd SpringBoard");
+    }
+}
 - (void)increaseAlpha
 {
 	[UIView animateWithDuration:0.5 animations:^{
@@ -255,3 +496,9 @@
 	}];
 }				
 @end
+
+
+__attribute__((constructor)) static void initialize()
+{
+	dlopen("/usr/lib/libcolorpicker.dylib", RTLD_GLOBAL);
+}

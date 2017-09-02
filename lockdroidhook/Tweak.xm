@@ -23,8 +23,24 @@ static int leftTryAttenps;
 static NSString* passwordSt;
 static NSString* passwordDrawSt;
 
-@implementation NSData (AES)
-- (NSData *)AES128:(BOOL)encrypt key:(NSString *)key iv:(NSString *)iv
+
+static NSString* drawYourPassword;
+static NSString* incorrectDrawPassword;
+static NSString* inputPassword;
+static NSString* attemptLeft;
+
+BOOL useImage;
+NSString* imagePath;
+int matrix;
+UIColor* selectionColor;
+UIColor* warningColor;
+UIColor* validColor;
+UIColor* dotNormalColor;
+UIColor* dotFillColor;
+
+
+
+static NSData* dataAES128(NSData* dataRaw, BOOL encrypt, NSString* key, NSString* iv)
 {
 	CCOperation operation = encrypt?kCCEncrypt:kCCDecrypt;
     char keyPtr[kCCKeySizeAES128 + 1];
@@ -32,10 +48,10 @@ static NSString* passwordDrawSt;
     [key getCString:keyPtr maxLength:sizeof(keyPtr) encoding:NSUTF8StringEncoding];
     char ivPtr[kCCBlockSizeAES128 + 1];
     bzero(ivPtr, sizeof(ivPtr));
-    if (iv) {
+    if(iv) {
 		[iv getCString:ivPtr maxLength:sizeof(ivPtr) encoding:NSUTF8StringEncoding];
     }
-    NSUInteger dataLength = [self length];
+    NSUInteger dataLength = [dataRaw length];
     size_t bufferSize = dataLength + kCCBlockSizeAES128;
     void *buffer = malloc(bufferSize);
     size_t numBytesEncrypted = 0;
@@ -45,50 +61,48 @@ static NSString* passwordDrawSt;
 					  keyPtr,
 					  kCCBlockSizeAES128,
 					  ivPtr,
-					  [self bytes],
+					  [dataRaw bytes],
 					  dataLength,
 					  buffer,
 					  bufferSize,
 					  &numBytesEncrypted);
-    if (cryptStatus == kCCSuccess) {
-	return [NSData dataWithBytesNoCopy:buffer length:numBytesEncrypted];
+    if(cryptStatus == kCCSuccess) {
+		return [NSData dataWithBytesNoCopy:buffer length:numBytesEncrypted];
     }
     free(buffer);
     return nil;
 }
-@end
 
 static NSString* keyAES()
 {
 	return @"\x01\x00\x01\x04\x00\x06\x04";
 }
 
-
-static void settingsChangedLockDroid(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo)
-{	
-	@autoreleasepool {		
-		NSDictionary *WidPlayerPrefs = [[[NSDictionary alloc] initWithContentsOfFile:@PLIST_PATH_Settings]?:[NSDictionary dictionary] copy];
-		Enabled = (BOOL)[[WidPlayerPrefs objectForKey:@"Enabled"]?:@YES boolValue];
-		DrawRecognizeFast = (BOOL)[[WidPlayerPrefs objectForKey:@"DrawRecognizeFast"]?:@YES boolValue];
-		
-		AttemptEnabled = (BOOL)[[WidPlayerPrefs objectForKey:@"AttemptEnabled"]?:@YES boolValue];
-		leftTryAttenps = (int)[[WidPlayerPrefs objectForKey:@"leftTryAttenps"]?:@(3) intValue];
-		
-		NSString* newPasswordSt = nil;
-		NSString* newPasswordDrawSt = nil;
-		
-		if(NSData* encriptedPass = WidPlayerPrefs[@"Password"]) {
-			NSData* dataPass = [encriptedPass AES128:NO key:keyAES() iv:nil];
-			newPasswordSt = [[NSString alloc] initWithData:dataPass encoding:NSUTF8StringEncoding];
+static UIColor *colorFromString(NSString *value)
+{
+    if(value) {
+		float currentAlpha = 1.0f;
+		NSString *color = [value copy];
+		if([color rangeOfString:@":"].location != NSNotFound){
+			NSArray *colorAndOrAlpha = [color componentsSeparatedByString:@":"];
+			color = colorAndOrAlpha[0];
+			currentAlpha = [colorAndOrAlpha[1]?:@(1) floatValue];
+        }
+		unsigned int hexint  = 0;
+		if(color) {
+			NSScanner *scanner = [NSScanner scannerWithString:color];
+			[scanner setCharactersToBeSkipped:[NSCharacterSet characterSetWithCharactersInString:@"#"]];
+			[scanner scanHexInt:&hexint];
+			return [UIColor colorWithRed:((CGFloat) ((hexint & 0xFF0000) >> 16))/255
+			green:((CGFloat) ((hexint & 0xFF00) >> 8))/255
+			blue:((CGFloat) (hexint & 0xFF))/255
+			alpha:currentAlpha];
 		}
-		if(NSData* encriptedPassDraw = WidPlayerPrefs[@"PasswordDraw"]) {
-			NSData* dataPass = [encriptedPassDraw AES128:NO key:keyAES() iv:nil];
-			newPasswordDrawSt = [[NSString alloc] initWithData:dataPass encoding:NSUTF8StringEncoding];
-		}
-		passwordSt = newPasswordSt;
-		passwordDrawSt = newPasswordDrawSt;
-	}
+    }
+	return nil;
 }
+
+
 
 static void changeSettingsAndSave(NSString* key, id value, BOOL remove)
 {
@@ -152,7 +166,7 @@ static void changeSettingsAndSave(NSString* key, id value, BOOL remove)
 			self.titleLabel.text = @"Done";
 			
 			@autoreleasepool {
-				NSData* encriptedPass = [[self.passwordString dataUsingEncoding:NSUTF8StringEncoding] AES128:YES key:keyAES() iv:nil];
+				NSData* encriptedPass = dataAES128([self.passwordString dataUsingEncoding:NSUTF8StringEncoding], YES, keyAES(), nil);
 				changeSettingsAndSave(@"PasswordDraw", encriptedPass, NO);
 			}
 			self.passwordString = nil;
@@ -233,7 +247,7 @@ static LockDroidSwipeLockView* lockdroidViewInstance;
 		} else {
 			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.0001f * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
 				if(self.delegate&&Enabled) {
-					[self.delegate updateStatusText:@"Draw Your Password" subtitle:@"" animated:NO];
+					[self.delegate updateStatusText:drawYourPassword subtitle:@"" animated:NO];
 					if(!passwordSt || !passwordDrawSt) {
 						[self lockdroidPasswordMessage:!passwordDrawSt?NO:!passwordSt?YES:NO];
 					}
@@ -292,7 +306,7 @@ static LockDroidSwipeLockView* lockdroidViewInstance;
 		
 		if([[%c(SBLockScreenManager) sharedInstance] isUILocked]) {
 			if(self.delegate) {
-				[self.delegate updateStatusText:@"Incorrect Draw Password" subtitle:AttemptEnabled?self.lockdroidLeftTry==leftTryAttenps?@"Input Password.":[NSString stringWithFormat:@"%@ Attempt Left.", @(leftTryAttenps - self.lockdroidLeftTry)]:@"" animated:YES];
+				[self.delegate updateStatusText:incorrectDrawPassword subtitle:AttemptEnabled?self.lockdroidLeftTry==leftTryAttenps?inputPassword:[NSString stringWithFormat:@"%@ %@", @(leftTryAttenps - self.lockdroidLeftTry), attemptLeft]:@"" animated:YES];
 				if(AttemptEnabled) {
 					self.lockdroidLeftTry++;
 				}
@@ -324,7 +338,7 @@ static LockDroidSwipeLockView* lockdroidViewInstance;
     BOOL result = %orig;
 	if(!passwordSt&&![self isUILocked]&&(arg1&&arg1.length>0)) {
 		@autoreleasepool {
-			NSData* encriptedPass = [[arg1 dataUsingEncoding:NSUTF8StringEncoding] AES128:YES key:keyAES() iv:nil];
+			NSData* encriptedPass = dataAES128([arg1 dataUsingEncoding:NSUTF8StringEncoding], YES, keyAES(), nil);
 			changeSettingsAndSave(@"Password", encriptedPass, NO);
 		}
 	}
@@ -332,6 +346,49 @@ static LockDroidSwipeLockView* lockdroidViewInstance;
 }
 %end
 
+
+static void settingsChangedLockDroid(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo)
+{	
+	@autoreleasepool {
+		NSDictionary *WidPlayerPrefs = [[[NSDictionary alloc] initWithContentsOfFile:@PLIST_PATH_Settings]?:[NSDictionary dictionary] copy];
+		Enabled = (BOOL)[[WidPlayerPrefs objectForKey:@"Enabled"]?:@YES boolValue];
+		DrawRecognizeFast = (BOOL)[[WidPlayerPrefs objectForKey:@"DrawRecognizeFast"]?:@YES boolValue];
+		
+		useImage = (BOOL)[[WidPlayerPrefs objectForKey:@"useImage"]?:@NO boolValue];
+		imagePath = [[@"/Library/Application Support/LockDroid" stringByAppendingPathComponent:[WidPlayerPrefs objectForKey:@"imagePath"]?:@"Default.theme"] copy];
+		
+		matrix = (int)[[WidPlayerPrefs objectForKey:@"matrix"]?:@(3) intValue];
+		
+		AttemptEnabled = (BOOL)[[WidPlayerPrefs objectForKey:@"AttemptEnabled"]?:@YES boolValue];
+		leftTryAttenps = (int)[[WidPlayerPrefs objectForKey:@"leftTryAttenps"]?:@(3) intValue];
+		
+		NSString* newPasswordSt = nil;
+		NSString* newPasswordDrawSt = nil;
+		if(NSData* encriptedPass = WidPlayerPrefs[@"Password"]) {
+			NSData* dataPass = dataAES128(encriptedPass, NO, keyAES(), nil);
+			newPasswordSt = [[NSString alloc] initWithData:dataPass encoding:NSUTF8StringEncoding];
+		}
+		if(NSData* encriptedPassDraw = WidPlayerPrefs[@"PasswordDraw"]) {
+			NSData* dataPass = dataAES128(encriptedPassDraw, NO, keyAES(), nil);
+			newPasswordDrawSt = [[NSString alloc] initWithData:dataPass encoding:NSUTF8StringEncoding];
+		}
+		passwordSt = newPasswordSt;
+		passwordDrawSt = newPasswordDrawSt;
+		
+		drawYourPassword = [[WidPlayerPrefs objectForKey:@"drawYourPassword"]?:@"Draw Your Password" copy];
+		incorrectDrawPassword = [[WidPlayerPrefs objectForKey:@"incorrectDrawPassword"]?:@"Incorrect Draw Password" copy];
+		inputPassword = [[WidPlayerPrefs objectForKey:@"inputPassword"]?:@"Input Password." copy];
+		attemptLeft = [[WidPlayerPrefs objectForKey:@"attemptLeft"]?:@"Attempt Left." copy];
+		
+		selectionColor = colorFromString([WidPlayerPrefs objectForKey:@"selectionColor"]?:@"#00adff");
+		warningColor = colorFromString([WidPlayerPrefs objectForKey:@"warningColor"]?:@"#ff0000");
+		validColor = colorFromString([WidPlayerPrefs objectForKey:@"validColor"]?:@"#00ff00");
+		dotNormalColor = colorFromString([WidPlayerPrefs objectForKey:@"dotNormalColor"]?:@"#ffffff");
+		dotFillColor = colorFromString([WidPlayerPrefs objectForKey:@"dotFillColor"]?:@"#000000:0.200000");
+		
+		lockdroidViewInstance = nil;
+	}
+}
 
 
 %ctor
