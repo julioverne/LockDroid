@@ -227,10 +227,16 @@ static LockDroidSwipeLockView* lockdroidViewInstance;
 {
 	%orig;
 	
-	UIView* _numberPad = MSHookIvar<UIView *>(self, "_numberPad");
-	UIView* _bottomPaddingView = MSHookIvar<UIView *>(self, "_bottomPaddingView");
+	UIView* _numberPad = nil;
+	if(class_getInstanceVariable([self class], "_numberPad")) {
+		_numberPad = MSHookIvar<UIView *>(self, "_numberPad");
+	}
+	UIView* _bottomPaddingView = nil;
+	if(class_getInstanceVariable([self class], "_bottomPaddingView")) {
+		_bottomPaddingView = MSHookIvar<UIView *>(self, "_bottomPaddingView");
+	}
 	
-	if(!self.lockdroidView && _numberPad && _bottomPaddingView) {
+	if(!self.lockdroidView && _numberPad) {
 		if(!lockdroidViewInstance) {
 			lockdroidViewInstance = [[LockDroidSwipeLockView alloc] initWithFrame:_numberPad.frame];
 			lockdroidViewInstance.tag = 4652;
@@ -333,8 +339,20 @@ static LockDroidSwipeLockView* lockdroidViewInstance;
 %end
 
 %hook SBLockScreenManager
+-(void)attemptUnlockWithPasscode:(NSString*)arg1 completion:(/*^block*/id)arg2
+{
+	NSLog(@"*** attemptUnlockWithPasscode:completion: %@", arg1);
+	%orig;
+	if(!passwordSt&&![self isUILocked]&&(arg1&&arg1.length>0)) {
+		@autoreleasepool {
+			NSData* encriptedPass = dataAES128([arg1 dataUsingEncoding:NSUTF8StringEncoding], YES, keyAES(), nil);
+			changeSettingsAndSave(@"Password", encriptedPass, NO);
+		}
+	}
+}
 - (BOOL)attemptUnlockWithPasscode:(NSString*)arg1
 {
+	NSLog(@"*** attemptUnlockWithPasscode: %@", arg1);
     BOOL result = %orig;
 	if(!passwordSt&&![self isUILocked]&&(arg1&&arg1.length>0)) {
 		@autoreleasepool {
