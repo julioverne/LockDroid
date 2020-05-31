@@ -1,15 +1,16 @@
-include theos/makefiles/common.mk
+include $(THEOS)/makefiles/common.mk
 
 BUNDLE_NAME = LockDroid
-LockDroid_FILES = /mnt/d/codes/lockdroid/lockdroidsettings/LockDroidController.mm
-LockDroid_INSTALL_PATH = /Library/PreferenceBundles
-LockDroid_FRAMEWORKS = UIKit QuartzCore CoreGraphics MessageUI Social Twitter Foundation
-LockDroid_PRIVATE_FRAMEWORKS = Preferences
-LockDroid_LIBRARIES = MobileGestalt
-LockDroid_CFLAGS = -fobjc-arc
-LockDroid_LDFLAGS = -Wl,-segalign,4000
-LockDroid_ARCHS = armv7 arm64
-export ARCHS = armv7 arm64
+$(BUNDLE_NAME)_FILES = /mnt/d/codes/lockdroid/lockdroidsettings/LockDroidController.mm
+$(BUNDLE_NAME)_INSTALL_PATH = /Library/PreferenceBundles
+$(BUNDLE_NAME)_FRAMEWORKS = UIKit QuartzCore CoreGraphics MessageUI Social Twitter Foundation
+$(BUNDLE_NAME)_PRIVATE_FRAMEWORKS = Preferences
+$(BUNDLE_NAME)_LIBRARIES = MobileGestalt
+$(BUNDLE_NAME)_CFLAGS = -fobjc-arc
+$(BUNDLE_NAME)_LDFLAGS = -Wl,-segalign,4000
+
+$(BUNDLE_NAME)_ARCHS = armv7 armv7s arm64 arm64e
+export ARCHS = armv7 armv7s arm64 arm64e
 
 include $(THEOS_MAKE_PATH)/bundle.mk
 

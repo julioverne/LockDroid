@@ -1,4 +1,4 @@
-include theos/makefiles/common.mk
+include $(THEOS)/makefiles/common.mk
 
 SUBPROJECTS += lockdroidhook
 SUBPROJECTS += lockdroidsettings

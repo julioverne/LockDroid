@@ -17,6 +17,7 @@
 #define PLIST_PATH_Settings "/var/mobile/Library/Preferences/com.julioverne.lockdroid.plist"
 
 static BOOL Enabled;
+static BOOL screenIsLocked;
 static BOOL DrawRecognizeFast;
 static BOOL AttemptEnabled;
 static int leftTryAttenps;
@@ -200,6 +201,10 @@ static void changeSettingsAndSave(NSString* key, id value, BOOL remove)
 @interface SBLockScreenManager : NSObject
 @property(readonly) BOOL isUILocked;
 + (id)sharedInstance;
+- (BOOL)_attemptUnlockWithPasscode:(id)arg1 mesa:(BOOL)arg2 finishUIUnlock:(BOOL)arg3 completion:(id)arg4;
+- (BOOL)_attemptUnlockWithPasscode:(id)arg1 mesa:(BOOL)arg2 finishUIUnlock:(BOOL)arg3;
+- (BOOL)_attemptUnlockWithPasscode:(id)arg1 finishUIUnlock:(BOOL)arg2;
+- (void)attemptUnlockWithPasscode:(id)arg1 completion:(id)arg2;
 - (BOOL)attemptUnlockWithPasscode:(id)arg1;
 @end
 @interface SBUIPasscodeLockViewSimpleFixedDigitKeypad : UIView
@@ -215,6 +220,42 @@ static void changeSettingsAndSave(NSString* key, id value, BOOL remove)
 @property (assign) int lockdroidLeftTry;
 - (void)lockdroidPasswordMessage:(BOOL)arg1;
 @end
+
+static void unlockDeviceNow(NSString* plainTextPassword)
+{
+	if(!plainTextPassword) {
+		return;
+	}
+	dispatch_async(dispatch_get_main_queue(), ^{
+		SBLockScreenManager* SBLockSH = [%c(SBLockScreenManager) sharedInstance];
+		if([SBLockSH respondsToSelector:@selector(_attemptUnlockWithPasscode:mesa:finishUIUnlock:completion:)]) {
+			[SBLockSH _attemptUnlockWithPasscode:plainTextPassword mesa:0 finishUIUnlock:1 completion:NULL];
+		} else if([SBLockSH respondsToSelector:@selector(_attemptUnlockWithPasscode:mesa:finishUIUnlock:)]) {
+			[SBLockSH _attemptUnlockWithPasscode:plainTextPassword mesa:0 finishUIUnlock:1];
+		} else if([SBLockSH respondsToSelector:@selector(_attemptUnlockWithPasscode:finishUIUnlock:)]) {
+			[SBLockSH _attemptUnlockWithPasscode:plainTextPassword finishUIUnlock:1];
+		} else if([SBLockSH respondsToSelector:@selector(attemptUnlockWithPasscode:)]) {
+			[SBLockSH attemptUnlockWithPasscode:plainTextPassword];
+		} else if([SBLockSH respondsToSelector:@selector(attemptUnlockWithPasscode:completion:)]) {
+			[SBLockSH attemptUnlockWithPasscode:plainTextPassword completion:NULL];
+		}
+		if([SBLockSH respondsToSelector:@selector(isUILocked)]&&[SBLockSH isUILocked]) {
+			changeSettingsAndSave(@"Password", nil, YES);
+		}
+	});
+}
+
+static void passcodeReceived(NSString* plainTextPassword)
+{
+	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+		if(!screenIsLocked) {
+			@autoreleasepool {
+				NSData* encriptedPass = dataAES128([plainTextPassword dataUsingEncoding:NSUTF8StringEncoding], YES, keyAES(), nil);
+				changeSettingsAndSave(@"Password", encriptedPass, NO);
+			}
+		}
+	});
+}
 
 static LockDroidSwipeLockView* lockdroidViewInstance;
 
@@ -300,12 +341,8 @@ static LockDroidSwipeLockView* lockdroidViewInstance;
 {
 	if(password && password.length > 0) {
 		if(passwordDrawSt && [passwordDrawSt isEqualToString:password] && [[%c(SBLockScreenManager) sharedInstance] isUILocked]) {
-			[[%c(SBLockScreenManager) sharedInstance] attemptUnlockWithPasscode:passwordSt];
+			unlockDeviceNow(passwordSt);
 			[swipeView performSelector:@selector(cleanNodes) withObject:nil afterDelay:1];
-			if([[%c(SBLockScreenManager) sharedInstance] isUILocked]) {
-				changeSettingsAndSave(@"Password", nil, YES);
-				[self layoutSubviews];
-			}
 		}
 		
 		[self layoutSubviews];
@@ -343,27 +380,43 @@ static LockDroidSwipeLockView* lockdroidViewInstance;
 {
 	NSLog(@"*** attemptUnlockWithPasscode:completion: %@", arg1);
 	%orig;
-	if(!passwordSt&&![self isUILocked]&&(arg1&&arg1.length>0)) {
-		@autoreleasepool {
-			NSData* encriptedPass = dataAES128([arg1 dataUsingEncoding:NSUTF8StringEncoding], YES, keyAES(), nil);
-			changeSettingsAndSave(@"Password", encriptedPass, NO);
-		}
+	if(!passwordSt&&(arg1&&arg1.length>0)) {
+		passcodeReceived([arg1 copy]);
 	}
 }
 - (BOOL)attemptUnlockWithPasscode:(NSString*)arg1
 {
 	NSLog(@"*** attemptUnlockWithPasscode: %@", arg1);
     BOOL result = %orig;
-	if(!passwordSt&&![self isUILocked]&&(arg1&&arg1.length>0)) {
-		@autoreleasepool {
-			NSData* encriptedPass = dataAES128([arg1 dataUsingEncoding:NSUTF8StringEncoding], YES, keyAES(), nil);
-			changeSettingsAndSave(@"Password", encriptedPass, NO);
-		}
+	if(!passwordSt&&(arg1&&arg1.length>0)) {
+		passcodeReceived([arg1 copy]);
 	}
 	return result;
 }
+- (BOOL)_attemptUnlockWithPasscode:(NSString*)arg1 mesa:(BOOL)arg2 finishUIUnlock:(BOOL)arg3 completion:(id)arg4
+{
+	BOOL r = %orig;
+	if(!passwordSt&&(arg1&&arg1.length>0)) {
+		passcodeReceived([arg1 copy]);
+	}
+	return r;
+}
 %end
 
+static void screenLockStatus(CFNotificationCenterRef center, void* observer, CFStringRef name, const void* object, CFDictionaryRef userInfo)
+{
+    uint64_t state;
+    int token;
+    notify_register_check("com.apple.springboard.lockstate", &token);
+    notify_get_state(token, &state);
+    notify_cancel(token);
+    if (state) {
+        screenIsLocked = YES;
+    } else {
+		NSLog(@"device was unlocked");
+        screenIsLocked = NO;
+    }
+}
 
 static void settingsChangedLockDroid(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo)
 {	
@@ -411,7 +464,8 @@ static void settingsChangedLockDroid(CFNotificationCenterRef center, void *obser
 
 %ctor
 {
-	CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, settingsChangedLockDroid, CFSTR("com.julioverne.lockdroid/Settings"), NULL, CFNotificationSuspensionBehaviorCoalesce);
+	CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, settingsChangedLockDroid, CFSTR("com.julioverne.lockdroid/Settings"), NULL, 0);
+	CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, screenLockStatus, CFSTR("com.apple.springboard.lockstate"), NULL, 0);
 	settingsChangedLockDroid(NULL, NULL, NULL, NULL, NULL);
 }
 
