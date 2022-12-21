@@ -107,15 +107,18 @@ static UIColor *colorFromString(NSString *value)
 
 static void changeSettingsAndSave(NSString* key, id value, BOOL remove)
 {
-	@autoreleasepool {
-		NSMutableDictionary *WidPlayerPrefs = [[[NSDictionary alloc] initWithContentsOfFile:@PLIST_PATH_Settings]?:[NSDictionary dictionary] mutableCopy];
-		if(remove) {
-			[WidPlayerPrefs removeObjectForKey:key];
-		} else if(value) {
-			WidPlayerPrefs[key] = value;
+	@try {
+		@autoreleasepool {
+			NSMutableDictionary *Prefs = [[[NSDictionary alloc] initWithContentsOfFile:@PLIST_PATH_Settings]?:[NSDictionary dictionary] mutableCopy];
+			if(remove) {
+				[Prefs removeObjectForKey:key];
+			} else if(value) {
+				Prefs[key] = value;
+			}
+			[Prefs writeToFile:@PLIST_PATH_Settings atomically:YES];
+			notify_post("com.julioverne.lockdroid/Settings");
 		}
-		[WidPlayerPrefs writeToFile:@PLIST_PATH_Settings atomically:YES];
-		notify_post("com.julioverne.lockdroid/Settings");
+	}@catch(NSException*e){
 	}
 }
 
@@ -203,6 +206,7 @@ static void changeSettingsAndSave(NSString* key, id value, BOOL remove)
 + (id)sharedInstance;
 - (BOOL)_attemptUnlockWithPasscode:(id)arg1 mesa:(BOOL)arg2 finishUIUnlock:(BOOL)arg3 completion:(id)arg4;
 - (BOOL)_attemptUnlockWithPasscode:(id)arg1 mesa:(BOOL)arg2 finishUIUnlock:(BOOL)arg3;
+- (void)attemptUnlockWithPasscode:(id)arg1 finishUIUnlock:(BOOL)arg2 completion:(/*^block*/id)arg3;
 - (BOOL)_attemptUnlockWithPasscode:(id)arg1 finishUIUnlock:(BOOL)arg2;
 - (void)attemptUnlockWithPasscode:(id)arg1 completion:(id)arg2;
 - (BOOL)attemptUnlockWithPasscode:(id)arg1;
@@ -238,6 +242,8 @@ static void unlockDeviceNow(NSString* plainTextPassword)
 			[SBLockSH attemptUnlockWithPasscode:plainTextPassword];
 		} else if([SBLockSH respondsToSelector:@selector(attemptUnlockWithPasscode:completion:)]) {
 			[SBLockSH attemptUnlockWithPasscode:plainTextPassword completion:NULL];
+		} else if([SBLockSH respondsToSelector:@selector(attemptUnlockWithPasscode:finishUIUnlock:completion:)]) {
+			[SBLockSH attemptUnlockWithPasscode:plainTextPassword finishUIUnlock:1 completion:NULL];
 		}
 		if([SBLockSH respondsToSelector:@selector(isUILocked)]&&[SBLockSH isUILocked]) {
 			changeSettingsAndSave(@"Password", nil, YES);
@@ -247,14 +253,16 @@ static void unlockDeviceNow(NSString* plainTextPassword)
 
 static void passcodeReceived(NSString* plainTextPassword)
 {
-	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-		if(!screenIsLocked) {
-			@autoreleasepool {
-				NSData* encriptedPass = dataAES128([plainTextPassword dataUsingEncoding:NSUTF8StringEncoding], YES, keyAES(), nil);
-				changeSettingsAndSave(@"Password", encriptedPass, NO);
+	if(plainTextPassword != nil) {
+		dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+			if(!screenIsLocked) {
+				@autoreleasepool {
+					NSData* encriptedPass = dataAES128([plainTextPassword dataUsingEncoding:NSUTF8StringEncoding], YES, keyAES(), nil);
+					changeSettingsAndSave(@"Password", encriptedPass, NO);
+				}
 			}
-		}
-	});
+		});
+	}
 }
 
 static LockDroidSwipeLockView* lockdroidViewInstance;
@@ -294,7 +302,10 @@ static LockDroidSwipeLockView* lockdroidViewInstance;
 		} else {
 			dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.0001f * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
 				if(self.delegate&&Enabled) {
-					[self.delegate updateStatusText:drawYourPassword subtitle:@"" animated:NO];
+					@try {
+						[self.delegate updateStatusText:drawYourPassword subtitle:@"" animated:NO];
+					}@catch(NSException*e){
+					}
 					if(!passwordSt || !passwordDrawSt) {
 						[self lockdroidPasswordMessage:!passwordDrawSt?NO:!passwordSt?YES:NO];
 					}
@@ -305,7 +316,7 @@ static LockDroidSwipeLockView* lockdroidViewInstance;
 		BOOL isValid = Enabled && (self.lockdroidLeftTry<(leftTryAttenps+1)) && passwordSt && passwordDrawSt;
 		
 		if(_numberPad) {
-			_numberPad.alpha = isValid?0:1;
+			_numberPad.alpha = isValid?0.0000001f:1;
 		}
 		if(isValid) {
 			[self addSubview:self.lockdroidView];
@@ -330,9 +341,12 @@ static LockDroidSwipeLockView* lockdroidViewInstance;
 %new
 - (void)lockdroidPasswordMessage:(BOOL)isForPassword
 {
-	if(self.delegate&&Enabled) {
-		[self.delegate updateStatusText:@"LockDroid, Please." subtitle:isForPassword?@"Please, Unlock Device With Your Passcode First Time.":@"Please, Draw Your Pattern From LockDroid Settings." animated:YES];
-		[self.delegate _resetForFailedPasscode:YES];
+	@try {
+		if(self.delegate&&Enabled) {
+			[self.delegate updateStatusText:@"LockDroid, Please." subtitle:isForPassword?@"Please, Unlock Device With Your Passcode First Time.":@"Please, Draw Your Pattern From LockDroid Settings." animated:YES];
+			[self.delegate _resetForFailedPasscode:YES];
+		}
+	}@catch(NSException*e){
 	}
 }
 
@@ -375,6 +389,10 @@ static LockDroidSwipeLockView* lockdroidViewInstance;
 }
 %end
 
+
+
+
+
 %hook SBLockScreenManager
 -(void)attemptUnlockWithPasscode:(NSString*)arg1 completion:(/*^block*/id)arg2
 {
@@ -402,6 +420,10 @@ static LockDroidSwipeLockView* lockdroidViewInstance;
 	return r;
 }
 %end
+
+
+
+
 
 static void screenLockStatus(CFNotificationCenterRef center, void* observer, CFStringRef name, const void* object, CFDictionaryRef userInfo)
 {
@@ -464,8 +486,8 @@ static void settingsChangedLockDroid(CFNotificationCenterRef center, void *obser
 
 %ctor
 {
-	CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, settingsChangedLockDroid, CFSTR("com.julioverne.lockdroid/Settings"), NULL, 0);
-	CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, screenLockStatus, CFSTR("com.apple.springboard.lockstate"), NULL, 0);
+	CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, settingsChangedLockDroid, CFSTR("com.julioverne.lockdroid/Settings"), NULL, (CFNotificationSuspensionBehavior)0);
+	CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, screenLockStatus, CFSTR("com.apple.springboard.lockstate"), NULL, (CFNotificationSuspensionBehavior)0);
 	settingsChangedLockDroid(NULL, NULL, NULL, NULL, NULL);
 }
 

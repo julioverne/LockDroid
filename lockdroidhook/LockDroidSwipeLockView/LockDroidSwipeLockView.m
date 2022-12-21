@@ -32,7 +32,7 @@
         
         UIPanGestureRecognizer *panRec = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(pan:)];
         [self addGestureRecognizer:panRec];
-        self.viewState = LockDroidSwipeLockNodeViewStatusNormal;
+        self.viewState = (LockDroidSwipeLockViewState)LockDroidSwipeLockNodeViewStatusNormal;
         [self cleanNodes];
         
     }
@@ -43,7 +43,7 @@
 {
 	@autoreleasepool {
     if  (rec.state == UIGestureRecognizerStateBegan){
-        self.viewState = LockDroidSwipeLockNodeViewStatusNormal;
+        self.viewState = (LockDroidSwipeLockViewState)LockDroidSwipeLockNodeViewStatusNormal;
     }
     
     CGPoint touchPoint = [rec locationInView:self];
@@ -73,7 +73,7 @@
             
         }
         else{
-            self.viewState = LockDroidSwipeLockViewStateSelected;
+            self.viewState = (LockDroidSwipeLockViewState)LockDroidSwipeLockViewStateSelected;
         }
     }
     }
@@ -260,7 +260,7 @@
 }
 
 -(void)cleanNodesIfNeeded{
-    if(self.viewState != LockDroidSwipeLockNodeViewStatusNormal){
+    if(self.viewState != (LockDroidSwipeLockViewState)LockDroidSwipeLockNodeViewStatusNormal){
         [self cleanNodes];
     }
 }
